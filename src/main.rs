@@ -1,22 +1,28 @@
-mod clipboard;
 mod communication;
 mod config;
 mod discovery;
 mod logging;
-mod services;
+mod actions;
 
-use std::{sync::mpsc, thread};
+use std::{thread};
 
-use communication::{Message, Server};
+use arboard::Clipboard;
+use communication::{Server};
+
+use crate::{actions::{action_manager::ActionManager, clipboard::ClipboardAction, shutdown::ShutdownAction, volume::VolumeAction}, logging::{ConsoleLogger, FileLogger}};
 
 fn main() {
-    let (tx, rx) = mpsc::channel::<Message>();
-    thread::spawn(move || {
-        let mut server = Server::create();
-        server.listen(5252, tx).ok();
-    });
+    let mut action_manager = ActionManager::new();
+    let logger = ConsoleLogger::new();
 
-    while let Ok(message) = rx.recv() {
-        println!("{:?}", message);
-    }
+    let clipboard = Clipboard::new().unwrap();
+
+    let clipboard_action = ClipboardAction::new(clipboard);
+
+    action_manager.subscribe(communication::Actions::SHUTDOWN, Box::new(ShutdownAction::new()));
+    action_manager.subscribe(communication::Actions::VOLUME, Box::new(VolumeAction::new()));
+    action_manager.subscribe(communication::Actions::CLIPBOARD, Box::new(clipboard_action));
+
+    let mut server = Server::create(action_manager);
+    server.listen(5252).ok();
 }

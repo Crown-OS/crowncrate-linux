@@ -1,7 +1,7 @@
 mod message;
-mod methods;
 mod server;
+mod actions;
 
 pub use message::Message;
-pub use methods::Method;
+pub use actions::Actions;
 pub use server::Server;
